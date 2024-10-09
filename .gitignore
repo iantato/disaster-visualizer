@@ -1,0 +1,10 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+.vscode
+
+# Ignore Gradle build output directory
+build
+
+# Ignore stored files
+map.db
+map
