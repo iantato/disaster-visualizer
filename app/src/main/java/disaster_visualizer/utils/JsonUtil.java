@@ -1,15 +1,18 @@
 package disaster_visualizer.utils;
 
+import disaster_visualizer.model.Relation;
+import disaster_visualizer.model.RelationMember;
+
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Queue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -27,18 +30,13 @@ public class JsonUtil {
     final int cache_size = 1_000_000;
     final ObjectMapper mapper = new ObjectMapper();
     final ObjectWriter writer = mapper.writer().withDefaultPrettyPrinter();
-
-    Queue<Long> relationIds = new LinkedList<Long>();
-    Queue<Long> wayIds = new LinkedList<Long>();
-    Queue<Long> nodeIds = new LinkedList<Long>();
-
     /**
      * For creating JSON or reading JSON files.
      * Use this function if you already have a database
      * of OpenStreetMap data initialized.
      *
-     * @param json Name of the json to read or edit.
-     * @param database Name of the database.
+     * @param json Name of the json to read or edit (Add the .json extension on the String).
+     * @param database Name of the database (Add the .db extension on the String).
      */
     public JsonUtil(String json, String database) {
         this.json = json;
@@ -47,7 +45,7 @@ public class JsonUtil {
         if (!new File(database).exists()) {
             System.out.println("Database does not exist..");
         }
-        if (!new File("json\\" + json).exists()) {
+        if (!new File(json).exists()) {
             this.initializeJson();
         }
     }
@@ -57,9 +55,9 @@ public class JsonUtil {
      * Use this function if there are no database
      * available in your current setup.
      *
-     * @param json Name of the json file to read or edit.
-     * @param pbfFile Name of the PBF file.
-     * @param database Name of the database.
+     * @param json Name of the json file to read or edit (Add the .json extension on the String).
+     * @param pbfFile Name of the PBF file (Add the .osm.pbf extension on the String).
+     * @param database Name of the database (Add the .db extension on the String).
      */
     @SuppressWarnings("unused")
     public JsonUtil(String json, String pbfFile, String database) {
@@ -69,52 +67,8 @@ public class JsonUtil {
         if (!new File(database).exists()) {
             PbfReader pbfReader = new PbfReader(pbfFile, database);
         }
-        if (!new File("json\\" + json).exists()) {
+        if (!new File(json).exists()) {
             this.initializeJson();
-        }
-    }
-
-    /**
-     * Creates an SQLite3 Database connection. It also
-     * configures and optimizes the database connection.
-     *
-     * @return SQLite3 Database connection.
-     */
-    public Connection createSQLConnection() {
-        try {
-            Connection connection = DriverManager.getConnection("jdbc:sqlite:" + database);
-            Statement statement = connection.createStatement();
-
-            // SQL Settings
-            statement.execute("PRAGMA journal_mode = OFF");
-            statement.execute("PRAGMA synchronous = 0");
-            statement.execute("PRAGMA locking_mode = EXCLUSIVE");
-            statement.execute("PRAGMA cache_size = " + cache_size);
-            statement.execute("PRAGMA temp_store = MEMORY");
-            connection.setAutoCommit(false);
-
-            return connection;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * Disconnects the SQLite3 Database connection. Always
-     * remember to disconnect the database to save the data.
-     *
-     * @param connection SQLite3 Database connection.
-     */
-    public void disconnectSQLConnection(Connection connection) {
-        try {
-            if (connection != null) {
-                connection.commit();
-                connection.close();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return;
         }
     }
 
@@ -144,33 +98,137 @@ public class JsonUtil {
         rootNode.set("elements", elements);
 
         try {
-            writer.writeValue(new File("json\\" + json), rootNode);
+            writer.writeValue(new File(json), rootNode);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public ResultSet getRelationIds() {
-        Connection connection = createSQLConnection();
+    public void getRelations(Connection connection) {
 
-        ResultSet result;
+        LinkedList<Relation> relations = new LinkedList<Relation>();
 
         try {
             Statement statement = connection.createStatement();
-            String sql = SQLConstants.QUERY_POSTALS.replace(
-                                            "?",
-                                                    Arrays.toString(PostalCodes.CAVITE))
-                                                    .replace("[", "(")
-                                                    .replace("]", ")");
+            String sql = SQLConstants.QUERY_POSTALS.replace("?", Arrays.toString(PostalCodes.CAVITE)
+                                                                       .replace("[", "")
+                                                                       .replace("]", ""));
 
-            result = statement.executeQuery(sql);
+            ResultSet result = statement.executeQuery(sql);
+
+            while (result.next()) {
+                long relationId = result.getLong(1);
+                LinkedList<RelationMember> relationMembers = getRelationMembers(connection, relationId);
+
+                Relation relation = new Relation();
+                relation.setId(relationId);
+
+                for (RelationMember relationMember : relationMembers) {
+                    switch (relationMember.getType()) {
+                        case "Node":
+                            break;
+
+                        case "Way":
+                            this.getWayNodes(connection, relationMember.getRef());
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+            }
+
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        Database.disconnectSQLConnection(connection);
+    }
+
+    public LinkedList<RelationMember> getRelationMembers(Connection connection, long relationId) {
+
+        LinkedList<RelationMember> relationMembers = new LinkedList<RelationMember>();
+
+        try {
+            PreparedStatement statement = connection.prepareStatement(SQLConstants.QUERY_RELATION_MEMBERS);
+            statement.setLong(1, relationId);
+
+            ResultSet result = statement.executeQuery();
+
+            while (result.next()) {
+                RelationMember relationMember = new RelationMember();
+
+                relationMember.setType(result.getString(1));
+                relationMember.setRef(result.getLong(2));
+                relationMember.setRole(result.getString(3));
+
+                relationMembers.add(relationMember);
+            }
+
+            statement.close();
+
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
         }
 
-        disconnectSQLConnection(connection);
-        return result;
+        return relationMembers;
     }
 
+    public void getWayNodes(Connection connection, long referenceId) {
+
+
+
+        try {
+            PreparedStatement statement = connection.prepareStatement(SQLConstants.QUERY_WAY_NODES);
+            statement.setLong(1, referenceId);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+    }
+
+    public void getNode() {
+
+    }
+
+    public void getTags() {
+
+    }
+
+    public void test() {
+        this.getRelations(Database.createSQLConnection(database));
+    }
+
+    // public ResultSet getRelationIds() {
+    //     Connection connection = createSQLConnection();
+
+    //     ResultSet result;
+
+    //     try {
+    //         Statement statement = connection.createStatement();
+    //         String sql = SQLConstants.QUERY_POSTALS.replace(
+    //                                         "?",
+    //                                                 Arrays.toString(PostalCodes.CAVITE))
+    //                                                 .replace("[", "(")
+    //                                                 .replace("]", ")");
+
+    //         result = statement.executeQuery(sql);
+    //     } catch (SQLException e) {
+    //         e.printStackTrace();
+    //         return null;
+    //     }
+
+    //     disconnectSQLConnection(connection);
+    //     return result;
+    // }
+
+
+    public static void main(String[] args) {
+        JsonUtil jsonUtil = new JsonUtil("map.json", "calabarzon.osm.pbf", "map.db");
+        jsonUtil.test();
+    }
 }

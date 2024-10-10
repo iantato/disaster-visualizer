@@ -181,7 +181,7 @@ public class SQLConstants {
 
     public static final String QUERY_WAY_NODES = """
                 SELECT nodeId FROM "WayNodes"
-                WHERE wayId IN (?)
+                WHERE wayId = (?)
             """;
 
     // public static final String QUERY_NODES = """

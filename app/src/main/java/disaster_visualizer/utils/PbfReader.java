@@ -3,10 +3,8 @@ package disaster_visualizer.utils;
 import java.io.File;
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Map;
 
 import de.topobyte.osm4j.core.model.iface.EntityContainer;
@@ -26,8 +24,6 @@ public class PbfReader {
     private int currentNode, currentWay, currentRelation;
     private int maxNode, maxWay, maxRelation;
 
-    // Change to a lower digit on production.
-    final int cache_size = 1_000_000;
     // Change if you want to print the max sizes.
     final boolean countPrintable = false;
 
@@ -43,71 +39,7 @@ public class PbfReader {
         this.database = database;
 
         if (!new File(database).exists()) {
-            this.createSQLTables();
-        }
-    }
-
-    /**
-     * Creates the SQLite3 Tables if they do not exist yet.
-     */
-    public void createSQLTables() {
-        Connection connection = this.createSQLConnection();
-
-        try {
-            Statement statement = connection.createStatement();
-
-            for (String sql : SQLConstants.TABLES_CREATE) {
-                statement.execute(sql);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        this.disconnectSQLConnection(connection);
-    }
-
-    /**
-     * Creates an SQLite3 Database connection. It also
-     * configures and optimizes the database connection.
-     *
-     * @return SQLite3 Database connection.
-     */
-    public Connection createSQLConnection() {
-        try {
-            Connection connection = DriverManager.getConnection("jdbc:sqlite:" + database);
-            Statement statement = connection.createStatement();
-
-            // SQL Settings
-            statement.execute("PRAGMA journal_mode = OFF");
-            statement.execute("PRAGMA synchronous = 0");
-            statement.execute("PRAGMA locking_mode = EXCLUSIVE");
-            statement.execute("PRAGMA cache_size = " + cache_size);
-            statement.execute("PRAGMA temp_store = MEMORY");
-            connection.setAutoCommit(false);
-
-            return connection;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * Disconnects the SQLite3 Database connection. Always
-     * remember to disconnect the database to save the data.
-     *
-     * @param connection SQLite3 Database connection.
-     */
-    public void disconnectSQLConnection(Connection connection) {
-        try {
-            if (connection != null) {
-                connection.commit();
-                connection.close();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return;
+            Database.createSQLTables(database);
         }
     }
 
@@ -165,7 +97,7 @@ public class PbfReader {
         }
 
         PbfIterator iter = new PbfIterator(this.resetInputStream(), false);
-        Connection connection = this.createSQLConnection();
+        Connection connection = Database.createSQLConnection(database);
 
         try {
             PreparedStatement nodePreparedStatement = connection.prepareStatement(SQLConstants.NODES_INSERT);
@@ -203,7 +135,7 @@ public class PbfReader {
         }
 
         System.out.print("\n");
-        this.disconnectSQLConnection(connection);
+        Database.disconnectSQLConnection(connection);
     }
 
     /**
@@ -217,7 +149,7 @@ public class PbfReader {
         }
 
         PbfIterator iter = new PbfIterator(this.resetInputStream(), false);
-        Connection connection = this.createSQLConnection();
+        Connection connection = Database.createSQLConnection(database);
 
         try {
             PreparedStatement waysPreparedStatement = connection.prepareStatement(SQLConstants.WAYS_INSERT);
@@ -262,7 +194,7 @@ public class PbfReader {
         }
 
         System.out.print("\n");
-        this.disconnectSQLConnection(connection);
+        Database.disconnectSQLConnection(connection);
     }
 
     /**
@@ -276,7 +208,7 @@ public class PbfReader {
         }
 
         PbfIterator iter = new PbfIterator(this.resetInputStream(), false);
-        Connection connection = this.createSQLConnection();
+        Connection connection = Database.createSQLConnection(database);
 
         try {
             PreparedStatement relationsPreparedStatement = connection.prepareStatement(SQLConstants.RELATIONS_INSERT);
@@ -325,7 +257,7 @@ public class PbfReader {
         }
 
         System.out.println("\n");
-        this.disconnectSQLConnection(connection);
+        Database.disconnectSQLConnection(connection);
     }
 
     /**
