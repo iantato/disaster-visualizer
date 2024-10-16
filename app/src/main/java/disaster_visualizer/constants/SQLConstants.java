@@ -193,6 +193,12 @@ public class SQLConstants {
                 SELECT key, value FROM "Tags"
                 WHERE type = (?) AND id = (?)
             """;
+
+    public static final String CITY_QUERY = """
+                SELECT id from "Tags"
+                WHERE key = "name" AND value = (?) AND type = "Relation"
+            """;
+
     // public static final String QUERY_POSTALS = """
     //             SELECT id FROM "Tags"
     //             WHERE value in (?) AND type = "Relation"

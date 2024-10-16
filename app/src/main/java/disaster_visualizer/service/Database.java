@@ -86,7 +86,22 @@ public class Database {
      * @param array The array to be inserted.
      * @return Query with the inserted Array.
      */
-    public static String queryArrays(String query, long[] array) {
+    public static String queryArrays(String query, Long[] array) {
+        return query.replace("?", Arrays.toString(array)
+                                               .replace("[", "(")
+                                               .replace("]", ")"));
+    }
+
+    /**
+     * <b>String[] Array</b> insertion into queries for arrays.
+     * This inserts arrays into queries that uses the "IN" keyword
+     * as PreparedStatements does not work as of current testing.
+     *
+     * @param query The Statement's Query string.
+     * @param array The array to be inserted.
+     * @return Query with the inserted Array.
+     */
+    public static String queryArrays(String query, String[] array) {
         return query.replace("?", Arrays.toString(array)
                                                .replace("[", "(")
                                                .replace("]", ")"));

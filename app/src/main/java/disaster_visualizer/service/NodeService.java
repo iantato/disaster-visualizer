@@ -54,7 +54,7 @@ public class NodeService {
      * @throws SQLException if there is a problem with the queries
      *                      or in the connection.
      */
-    public static LinkedList<Node> getMultipleNodes(Connection connection, long[] nodesID) throws SQLException {
+    public static LinkedList<Node> getMultipleNodes(Connection connection, Long[] nodesID) throws SQLException {
 
         // Uses a linked list of Nodes as we don't know the total size of the array.
         LinkedList<Node> nodes = new LinkedList<Node>();

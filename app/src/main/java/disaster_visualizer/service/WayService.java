@@ -34,6 +34,7 @@ public class WayService {
         while (result.next()) {
             way.addNodes(result.getLong(1));
         }
+        getTags(connection, way);
 
         wayStatement.close();
 
