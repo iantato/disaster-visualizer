@@ -1,9 +1,10 @@
-package disaster_visualizer.utils;
+package disaster_visualizer.service;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import disaster_visualizer.constants.SQLConstants;
 
@@ -15,7 +16,7 @@ public class Database {
     /**
      * Creates the SQLite3 Tables if they do not exist yet.
      */
-    static public void createSQLTables(String database) {
+    public static void createSQLTables(String database) {
         Connection connection = createSQLConnection(database);
 
         try {
@@ -38,7 +39,7 @@ public class Database {
      *
      * @return SQLite3 Database connection.
      */
-    static public Connection createSQLConnection(String database) {
+    public static Connection createSQLConnection(String database) {
         try {
             Connection connection = DriverManager.getConnection("jdbc:sqlite:" + database);
             Statement statement = connection.createStatement();
@@ -64,7 +65,7 @@ public class Database {
      *
      * @param connection SQLite3 Database connection.
      */
-    static public void disconnectSQLConnection(Connection connection) {
+    public static void disconnectSQLConnection(Connection connection) {
         try {
             if (connection != null) {
                 connection.commit();
@@ -74,6 +75,21 @@ public class Database {
             e.printStackTrace();
             return;
         }
+    }
+
+    /**
+     * <b>long[] Array</b> insertion into queries for arrays.
+     * This inserts arrays into queries that uses the "IN" keyword
+     * as PreparedStatements does not work as of current testing.
+     *
+     * @param query The Statement's Query string.
+     * @param array The array to be inserted.
+     * @return Query with the inserted Array.
+     */
+    public static String queryArrays(String query, long[] array) {
+        return query.replace("?", Arrays.toString(array)
+                                               .replace("[", "(")
+                                               .replace("]", ")"));
     }
 
 }

@@ -169,20 +169,48 @@ public class SQLConstants {
     /**
      * Queries for data in the SQLite3 database.
      */
-    public static final String QUERY_POSTALS = """
-                SELECT id FROM "Tags"
-                WHERE value in (?) AND type = "Relation"
+    public static final String NODE_QUERY = """
+                SELECT * FROM "Nodes"
+                WHERE id = (?)
             """;
 
-    public static final String QUERY_RELATION_MEMBERS = """
+    public static final String MULTIPLE_NODES_QUERY = """
+                SELECT * FROM "Nodes"
+                WHERE id IN ?
+            """;
+
+    public static final String WAY_QUERY = """
+                SELECT nodeId FROM "WayNodes"
+                WHERE wayId = (?)
+            """;
+
+    public static final String RELATION_QUERY = """
                 SELECT type, refId, role FROM "RelationMembers"
                 WHERE relId = (?)
             """;
 
-    public static final String QUERY_WAY_NODES = """
-                SELECT nodeId FROM "WayNodes"
-                WHERE wayId = (?)
+    public static final String TAG_QUERY = """
+                SELECT key, value FROM "Tags"
+                WHERE type = (?) AND id = (?)
             """;
+    // public static final String QUERY_POSTALS = """
+    //             SELECT id FROM "Tags"
+    //             WHERE value in (?) AND type = "Relation"
+    //         """;
+
+    // public static final String QUERY_RELATION_MEMBERS = """
+    //             SELECT type, refId, role FROM "RelationMembers"
+    //             WHERE relId = (?)
+    //         """;
+
+    // public static final String QUERY_WAY_NODES = """
+    //             SELECT nodeId FROM "WayNodes"
+    //             WHERE wayId = (?)
+    //         """;
+
+    // public static final String QUERY_NODE = """
+
+    //         """;
 
     // public static final String QUERY_NODES = """
     //             SELECT longitude, latitude FROM "Nodes"

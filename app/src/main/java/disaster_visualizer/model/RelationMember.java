@@ -10,24 +10,23 @@ public class RelationMember {
         return type;
     }
 
-    public long getRef() {
-        return ref;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
     public void setType(String type) {
         this.type = type;
+    }
+
+    public long getRef() {
+        return ref;
     }
 
     public void setRef(long ref) {
         this.ref = ref;
     }
 
+    public String getRole() {
+        return role;
+    }
+
     public void setRole(String role) {
         this.role = role;
     }
-
 }

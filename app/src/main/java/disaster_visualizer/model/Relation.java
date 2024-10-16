@@ -1,14 +1,14 @@
 package disaster_visualizer.model;
 
-import java.util.List;
-import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedList;
 
 public class Relation {
 
     final private String type = "Relation";
     private long id;
-    private List<RelationMember> members;
-    private Map<String, String> tags;
+    private LinkedList<RelationMember> members = new LinkedList<RelationMember>();
+    private HashMap<String, String> tags = new HashMap<String, String>();
 
     public String getType() {
         return type;
@@ -18,20 +18,23 @@ public class Relation {
         return id;
     }
 
-    public List<RelationMember> getMembers() {
-        return members;
-    }
-
-    public Map<String, String> getTags() {
-        return tags;
-    }
-
     public void setId(long id) {
         this.id = id;
     }
 
-    public void setTags(Map<String, String> tags) {
-        this.tags = tags;
+    public LinkedList<RelationMember> getMembers() {
+        return members;
     }
 
+    public void addMember(RelationMember member) {
+        members.add(member);
+    }
+
+    public HashMap<String, String> getTags() {
+        return tags;
+    }
+
+    public void addTag(String key, String value) {
+        tags.put(key, value);
+    }
 }

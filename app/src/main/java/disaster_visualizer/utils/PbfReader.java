@@ -16,6 +16,7 @@ import de.topobyte.osm4j.core.model.impl.RelationMember;
 import de.topobyte.osm4j.core.model.util.OsmModelUtil;
 import de.topobyte.osm4j.pbf.seq.PbfIterator;
 import disaster_visualizer.constants.SQLConstants;
+import disaster_visualizer.service.Database;
 
 public class PbfReader {
     String pbfFile;
