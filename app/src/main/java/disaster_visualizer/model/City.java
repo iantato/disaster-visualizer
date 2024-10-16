@@ -29,7 +29,7 @@ public class City {
      * converted into Mercator Projection.
      *   panelHeight / mercatorY(85°) - mercatorY(-85°)
      */
-    private LinkedList<double[]> coordinates;
+    private LinkedList<double[]> coordinates = new LinkedList<double[]>();
 
     public String getCity() {
         return city;
