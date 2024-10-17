@@ -3,8 +3,10 @@
  */
 package disaster_visualizer;
 
+import disaster_visualizer.components.MainWindow;
+
 public class App {
     public static void main(String[] args) {
-
+        MainWindow mainWindow = new MainWindow();
     }
 }

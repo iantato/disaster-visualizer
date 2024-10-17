@@ -70,6 +70,29 @@ public class SQLConstants {
                 CONSTRAINT fkId FOREIGN KEY (refId) REFERENCES Nodes(id),
                 CONSTRAINT fkId FOREIGN KEY (refId) REFERENCES Ways(id)
             )
+        """,
+        """
+            CREATE TABLE IF NOT EXISTS Cities (
+                relId BIGINT(16) PRIMARY KEY NOT NULL,
+                minLongitude DOUBLE(10, 6),
+                maxLongitude DOUBLE(10, 6),
+                minLatitude DOUBLE(10, 6),
+                maxLatitude DOUBLE(10, 6),
+
+                CONSTRAINT fkRelId FOREIGN KEY (relId) REFERENCES Relations(id)
+            )
+        """,
+        """
+            CREATE TABLE IF NOT EXISTS TransposedCityBoundaries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                relId BIGINT(16) NOT NULL,
+                longitude DOUBLE(10, 6),
+                latitude DOUBLE(10, 6),
+                posX DOUBLE(10, 6),
+                posY DOUBLE(10, 6),
+
+                CONSTRAINT fkRelId FOREIGN KEY (relId) REFERENCES Relations(id)
+            )
         """
     };
 
@@ -166,61 +189,111 @@ public class SQLConstants {
                 )
             """;
 
+    public static final String CITY_INSERT = """
+                INSERT INTO Cities
+                (
+                    relId,
+                    minLongitude,
+                    maxLongitude,
+                    minLatitude,
+                    maxLatitude
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )
+            """;
+
+    public static final String TRANSPOSED_CITY_BOUNDARIES_INSERT = """
+                INSERT INTO TransposedCityBoundaries (
+                    relId,
+                    longitude,
+                    latitude,
+                    posX,
+                    posY
+                )
+                VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )
+            """;
+
+
     /**
-     * Queries for data in the SQLite3 database.
+     * Updates for data in SQLite3 database.
      */
-    public static final String NODE_QUERY = """
-                SELECT * FROM "Nodes"
-                WHERE id = (?)
-            """;
-
-    public static final String MULTIPLE_NODES_QUERY = """
-                SELECT * FROM "Nodes"
-                WHERE id IN ?
-            """;
-
-    public static final String WAY_QUERY = """
-                SELECT nodeId FROM "WayNodes"
-                WHERE wayId = (?)
-            """;
-
-    public static final String RELATION_QUERY = """
-                SELECT type, refId, role FROM "RelationMembers"
-                WHERE relId = (?)
-            """;
-
-    public static final String TAG_QUERY = """
-                SELECT key, value FROM "Tags"
-                WHERE type = (?) AND id = (?)
-            """;
-
-    public static final String CITY_QUERY = """
-                SELECT id from "Tags"
-                WHERE key = "name" AND value = (?) AND type = "Relation"
-            """;
-
-    // public static final String QUERY_POSTALS = """
-    //             SELECT id FROM "Tags"
-    //             WHERE value in (?) AND type = "Relation"
-    //         """;
-
-    // public static final String QUERY_RELATION_MEMBERS = """
-    //             SELECT type, refId, role FROM "RelationMembers"
+    // public static final String CITY_MIN_MAX_UPDATE = """
+    //             UPDATE Cities
+    //             SET minLongitude = (?),
+    //                 maxLongitude = (?),
+    //                 minLatitude = (?),
+    //                 maxLatitude = (?)
     //             WHERE relId = (?)
     //         """;
 
-    // public static final String QUERY_WAY_NODES = """
+    /**
+     * Queries for data in the SQLite3 database.
+     */
+    // public static final String NODE_QUERY = """
+    //             SELECT * FROM "Nodes"
+    //             WHERE id = (?)
+    //         """;
+
+    // public static final String MULTIPLE_NODES_QUERY = """
+    //             SELECT * FROM "Nodes"
+    //             WHERE id IN ?
+    //         """;
+
+    // public static final String WAY_QUERY = """
     //             SELECT nodeId FROM "WayNodes"
     //             WHERE wayId = (?)
     //         """;
 
-    // public static final String QUERY_NODE = """
-
+    // public static final String RELATION_QUERY = """
+    //             SELECT type, refId, role FROM "RelationMembers"
+    //             WHERE relId = (?)
     //         """;
 
-    // public static final String QUERY_NODES = """
-    //             SELECT longitude, latitude FROM "Nodes"
-    //             WHERE value = (?)
+    // public static final String TAG_QUERY = """
+    //             SELECT key, value FROM "Tags"
+    //             WHERE type = (?) AND id = (?)
     //         """;
 
+    public static final String CITY_NAMES_QUERY = """
+                SELECT id, value from "Tags"
+                WHERE key = "name" AND value IN ? AND type = "Relation"
+            """;
+
+    public static final String NODES_QUERY = """
+                SELECT RelationMembers.refId, Nodes.longitude, Nodes.latitude
+                FROM "RelationMembers"
+                JOIN "Nodes" ON RelationMembers.refId = Nodes.id
+                WHERE RelationMembers.relId IN ? AND RelationMembers.type = "Node"
+            """;
+
+    // public static final String WAY_NODES_QUERY = """
+    //             SELECT RelationMembers.relId, RelationMembers.role, Nodes.id, Nodes.longitude, Nodes.latitude
+    //             FROM RelationMembers
+    //             JOIN WayNodes ON RelationMembers.refId = WayNodes.WayId
+    //             JOIN Nodes ON WayNodes.nodeId = Nodes.id
+    //             WHERE RelationMembers.relId IN ? AND RelationMembers.type = "Way" AND RelationMembers.role = "outer"
+    //             )
+    //         """;
+
+    public static final String WAY_NODES_QUERY = """
+                SELECT RelationMembers.relId, RelationMembers.role, Nodes.id, Nodes.longitude, Nodes.latitude
+                FROM RelationMembers
+                JOIN WayNodes ON RelationMembers.refId = WayNodes.WayId
+                JOIN Nodes ON WayNodes.nodeId = Nodes.id
+                LEFT JOIN Tags ON WayNodes.WayId = Tags.id AND Tags.key = "maritime"
+                WHERE RelationMembers.relId IN ? AND RelationMembers.type = "Way" AND RelationMembers.role = "outer" AND Tags.id IS NULL
+            """;
 }

@@ -1,4 +1,4 @@
-package disaster_visualizer.service;
+package disaster_visualizer.utils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -103,8 +103,9 @@ public class Database {
      */
     public static String queryArrays(String query, String[] array) {
         return query.replace("?", Arrays.toString(array)
-                                               .replace("[", "(")
-                                               .replace("]", ")"));
+                                               .replace("[", "(\"")
+                                               .replace("]", "\")")
+                                               .replace(", ", "\", \""));
     }
 
 }

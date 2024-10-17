@@ -1,10 +1,14 @@
-package disaster_visualizer.utils;
+package disaster_visualizer.service;
 
 import java.io.File;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
 import de.topobyte.osm4j.core.model.iface.EntityContainer;
@@ -15,12 +19,18 @@ import de.topobyte.osm4j.core.model.iface.OsmWay;
 import de.topobyte.osm4j.core.model.impl.RelationMember;
 import de.topobyte.osm4j.core.model.util.OsmModelUtil;
 import de.topobyte.osm4j.pbf.seq.PbfIterator;
+import disaster_visualizer.constants.Cities;
 import disaster_visualizer.constants.SQLConstants;
-import disaster_visualizer.service.Database;
+import disaster_visualizer.model.City;
+import disaster_visualizer.utils.Database;
+import disaster_visualizer.utils.MercatorProjection;
 
 public class PbfReader {
     String pbfFile;
     String database;
+
+    // Change the scope for a larger area.
+    final private String[] area = Cities.CAVITE;
 
     private int currentNode, currentWay, currentRelation;
     private int maxNode, maxWay, maxRelation;
@@ -32,8 +42,8 @@ public class PbfReader {
      * Parser and reader of PBF files. This creates a
      * SQLite3 database if one doesn't exist already.
      *
-     * @param pbfFile File name of the pbf file.
-     * @param database Name of the database.
+     * @param pbfFile File name of the pbf file (with .pbf extension in the String).
+     * @param database Name of the database (with the .db extension in the String).
      */
     public PbfReader(String pbfFile, String database) {
         this.pbfFile = pbfFile;
@@ -41,6 +51,7 @@ public class PbfReader {
 
         if (!new File(database).exists()) {
             Database.createSQLTables(database);
+            this.storeAllSQL();
         }
     }
 
@@ -262,6 +273,95 @@ public class PbfReader {
     }
 
     /**
+     * Stores all the longitude and latitude of the boundaries of all of the
+     * cities indicated in the area variable. This also stores the transposed
+     * lon and lat into X and Y values that we can for drawing in our swing using
+     * Mercator Projection.
+     * Stores all the Maximum and Minimum values of longitude and latitude for
+     * each boundaries of the cities.
+     */
+    public void getCityBorders() {
+
+        int transposedCounter = 0, currentCityCounter = 0;
+
+        Connection connection = Database.createSQLConnection(database);
+
+        try {
+            HashMap<Long, City> cities = new HashMap<Long, City>();
+
+            PreparedStatement cityInsert = connection.prepareStatement(SQLConstants.CITY_INSERT);
+            PreparedStatement transposedCityBoundaryInsert = connection.prepareStatement(SQLConstants.TRANSPOSED_CITY_BOUNDARIES_INSERT);
+            Statement statement = connection.createStatement();
+
+            ResultSet results = statement.executeQuery(Database.queryArrays(SQLConstants.CITY_NAMES_QUERY, area));
+            LinkedList<Long> relationIDs = new LinkedList<Long>();
+            System.out.println();
+            /**
+             * Convert the ResultSet into relation ids.
+             */
+            while (results.next()) {
+                System.out.print("Processing city relation ids...\r");
+                relationIDs.add(results.getLong(1));
+            }
+
+            results = statement.executeQuery(Database.queryArrays(SQLConstants.WAY_NODES_QUERY,
+                                                                  relationIDs.toArray(new Long[relationIDs.size()]))
+                                                                  );
+            System.out.println();
+            while (results.next()) {
+                System.out.print("Storing a lot of data... (" + (transposedCounter + 1) + ")\r");
+                long relationID = results.getLong("relId");
+                double latitude = results.getDouble("latitude");
+                double longitude = results.getDouble("longitude");
+
+                // Store city information into a POJO for easy access.
+                if (!cities.containsKey(relationID)) {
+                    cities.put(relationID, new City());
+                    cities.get(relationID).setId(relationID);
+                }
+
+                City currentCity = cities.get(relationID);
+                currentCity.setMinLatitude(Math.min(latitude, currentCity.getMinLatitude()));
+                currentCity.setMaxLatitude(Math.max(latitude, currentCity.getMaxLatitude()));
+                currentCity.setMinLongitude(Math.min(longitude, currentCity.getMinLongitude()));
+                currentCity.setMaxLongitude(Math.min(longitude, currentCity.getMaxLongitude()));
+
+                transposedCityBoundaryInsert.setLong(1, relationID);
+                transposedCityBoundaryInsert.setDouble(2, longitude);
+                transposedCityBoundaryInsert.setDouble(3, latitude);
+                transposedCityBoundaryInsert.setDouble(4, MercatorProjection.mercatorX(longitude));
+                transposedCityBoundaryInsert.setDouble(5, MercatorProjection.mercatorY(latitude));
+
+                transposedCityBoundaryInsert.addBatch();
+
+                transposedCounter++;
+            }
+
+            System.out.println();
+            for (City city : cities.values()) {
+                System.out.print("Getting min/max longitude and latitude: " + (currentCityCounter + 1) + "/" + cities.size() + "\r");
+                cityInsert.setLong(1, city.getId());
+                cityInsert.setDouble(2, city.getMinLongitude());
+                cityInsert.setDouble(3, city.getMaxLongitude());
+                cityInsert.setDouble(4, city.getMinLatitude());
+                cityInsert.setDouble(5, city.getMaxLatitude());
+
+                cityInsert.addBatch();
+
+                currentCityCounter++;
+            }
+
+            transposedCityBoundaryInsert.executeBatch();
+            cityInsert.executeBatch();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        Database.disconnectSQLConnection(connection);
+    }
+
+    /**
      * A single function that will run all 3 functions and
      * store them into the SQLite3 Database in the proper order.
      */
@@ -269,5 +369,6 @@ public class PbfReader {
         this.storeNodesSQL();
         this.storeWaysSQL();
         this.storeRelationsSQL();
+        this.getCityBorders();
     }
 }
