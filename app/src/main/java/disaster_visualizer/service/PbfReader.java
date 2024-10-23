@@ -324,7 +324,7 @@ public class PbfReader {
                 currentCity.setMinLatitude(Math.min(latitude, currentCity.getMinLatitude()));
                 currentCity.setMaxLatitude(Math.max(latitude, currentCity.getMaxLatitude()));
                 currentCity.setMinLongitude(Math.min(longitude, currentCity.getMinLongitude()));
-                currentCity.setMaxLongitude(Math.min(longitude, currentCity.getMaxLongitude()));
+                currentCity.setMaxLongitude(Math.max(longitude, currentCity.getMaxLongitude()));
 
                 transposedCityBoundaryInsert.setLong(1, relationID);
                 transposedCityBoundaryInsert.setDouble(2, longitude);
@@ -370,5 +370,9 @@ public class PbfReader {
         this.storeWaysSQL();
         this.storeRelationsSQL();
         this.getCityBorders();
+    }
+
+    public static void main(String[] args) {
+        PbfReader pbfReader = new PbfReader("calabarzon.osm.pbf", "map.db");
     }
 }
